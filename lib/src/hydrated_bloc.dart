@@ -15,7 +15,7 @@ import '../hydrated_bloc.dart';
 abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   /// {@macro hydrated_bloc}
   HydratedBloc() {
-    final stateJson = toJson(state);
+    final stateJson = toJson(_initialState = initialState);
     if (stateJson != null) {
       _storage.write(storageToken, json.encode(stateJson));
     }
@@ -24,12 +24,16 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   final HydratedStorage _storage =
       (BlocSupervisor.delegate as HydratedBlocDelegate).storage;
 
+  State _initialState;
   @mustCallSuper
   @override
   State get initialState {
+    if (_initialState != null) {
+      return _initialState;
+    }
     try {
       final jsonString = _storage?.read(storageToken) as String;
-      return jsonString?.isNotEmpty == true
+      return _initialState = jsonString?.isNotEmpty == true
           ? fromJson(json.decode(jsonString) as Map<String, dynamic>)
           : null;
     } on dynamic catch (_) {
@@ -53,7 +57,10 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   /// `clear` is used to wipe or invalidate the cache of a `HydratedBloc`.
   /// Calling `clear` will delete the cached state of the bloc
   /// but will not modify the current state of the bloc.
-  Future<void> clear() => _storage.delete(storageToken);
+  Future<void> clear() {
+    _initialState = null;
+    return _storage.delete(storageToken);
+  }
 
   /// Responsible for converting the `Map<String, dynamic>` representation
   /// of the bloc state into a concrete instance of the bloc state.

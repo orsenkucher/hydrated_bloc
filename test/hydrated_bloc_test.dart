@@ -119,20 +119,16 @@ void blocGroup() {
     });
 
     group('SingleHydratedBloc', () {
-      MyHydratedBloc bloc;
-
-      setUp(() {
-        bloc = MyHydratedBloc();
-      });
-
       test('stores initialState when instantiated', () {
+        MyHydratedBloc(); // instantiate one
         verify<dynamic>(
           storage.write('MyHydratedBloc', '{"value":0}'),
-        ).called(1);
+        ).called(1); // make sure write is called
       });
 
       test('initialState should return 0 when fromJson returns null', () {
         when<dynamic>(storage.read('MyHydratedBloc')).thenReturn(null);
+        final bloc = MyHydratedBloc();
         expect(bloc.initialState, 0);
         verify<dynamic>(storage.read('MyHydratedBloc')).called(2);
       });
@@ -140,33 +136,62 @@ void blocGroup() {
       test('initialState should return 101 when fromJson returns 101', () {
         when<dynamic>(storage.read('MyHydratedBloc'))
             .thenReturn(json.encode({'value': 101}));
+        final bloc = MyHydratedBloc();
         expect(bloc.initialState, 101);
-        verify<dynamic>(storage.read('MyHydratedBloc')).called(2);
+        verify<dynamic>(storage.read('MyHydratedBloc')).called(1);
       });
 
       group('clear', () {
         test('calls delete on storage', () async {
+          final bloc = MyHydratedBloc();
           await bloc.clear();
           verify(storage.delete('MyHydratedBloc')).called(1);
+        });
+
+        test('clear resets initial state and its fetched again', () async {
+          when<dynamic>(storage.read('MyHydratedBloc'))
+              .thenReturn(json.encode({'value': 101}));
+          final bloc = MyHydratedBloc();
+          expect(bloc.initialState, 101); // twice, to be sure `storage.read`
+          expect(bloc.initialState, 101); // is called only once
+          verify(storage.read('MyHydratedBloc')).called(1);
+
+          await bloc.clear();
+          when<dynamic>(storage.read('MyHydratedBloc')).thenReturn(null);
+          expect(bloc.initialState, 0);
+          // expect(bloc.initialState, 0);
+          // TODO test saving after `clear`
+          verify(storage.read('MyHydratedBloc')).called(1);
+
+          await bloc.clear();
+          when<dynamic>(storage.read('MyHydratedBloc'))
+              .thenReturn(json.encode({'value': 102}));
+          expect(bloc.initialState, 102);
+          expect(bloc.initialState, 102);
+          verify(storage.read('MyHydratedBloc')).called(1);
+
+          verify(storage.delete('MyHydratedBloc')).called(2);
         });
       });
     });
 
     group('MultiHydratedBloc', () {
-      MyMultiHydratedBloc multiBlocA;
-      MyMultiHydratedBloc multiBlocB;
+      // MyMultiHydratedBloc multiBlocA;
+      // MyMultiHydratedBloc multiBlocB;
 
-      setUp(() {
-        multiBlocA = MyMultiHydratedBloc('A');
-        multiBlocB = MyMultiHydratedBloc('B');
-      });
+      // setUp(() {
+      // final  multiBlocA = MyMultiHydratedBloc('A');
+      // final  multiBlocB = MyMultiHydratedBloc('B');
+      // });
 
       test('initialState should return 0 when fromJson returns null', () {
         when<dynamic>(storage.read('MyMultiHydratedBlocA')).thenReturn(null);
+        final multiBlocA = MyMultiHydratedBloc('A');
         expect(multiBlocA.initialState, 0);
         verify<dynamic>(storage.read('MyMultiHydratedBlocA')).called(2);
 
         when<dynamic>(storage.read('MyMultiHydratedBlocB')).thenReturn(null);
+        final multiBlocB = MyMultiHydratedBloc('B');
         expect(multiBlocB.initialState, 0);
         verify<dynamic>(storage.read('MyMultiHydratedBlocB')).called(2);
       });
@@ -175,21 +200,25 @@ void blocGroup() {
           () {
         when<dynamic>(storage.read('MyMultiHydratedBlocA'))
             .thenReturn(json.encode({'value': 101}));
+        final multiBlocA = MyMultiHydratedBloc('A');
         expect(multiBlocA.initialState, 101);
-        verify<dynamic>(storage.read('MyMultiHydratedBlocA')).called(2);
+        verify<dynamic>(storage.read('MyMultiHydratedBlocA')).called(1);
 
         when<dynamic>(storage.read('MyMultiHydratedBlocB'))
             .thenReturn(json.encode({'value': 102}));
+        final multiBlocB = MyMultiHydratedBloc('B');
         expect(multiBlocB.initialState, 102);
-        verify<dynamic>(storage.read('MyMultiHydratedBlocB')).called(2);
+        verify<dynamic>(storage.read('MyMultiHydratedBlocB')).called(1);
       });
 
       group('clear', () {
         test('calls delete on storage', () async {
+          final multiBlocA = MyMultiHydratedBloc('A');
           await multiBlocA.clear();
           verify(storage.delete('MyMultiHydratedBlocA')).called(1);
           verifyNever(storage.delete('MyMultiHydratedBlocB'));
 
+          final multiBlocB = MyMultiHydratedBloc('B');
           await multiBlocB.clear();
           verify(storage.delete('MyMultiHydratedBlocB')).called(1);
         });
