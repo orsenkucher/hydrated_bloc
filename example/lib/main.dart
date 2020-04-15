@@ -117,7 +117,7 @@ class CounterBloc extends HydratedBloc<CounterEvent, CounterState> {
   }
 
   @override
-  CounterState fromJson(Map<String, dynamic> source) {
+  CounterState fromJson(dynamic source) {
     return CounterState(source['value'] as int);
   }
 

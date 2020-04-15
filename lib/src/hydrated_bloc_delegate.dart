@@ -60,7 +60,7 @@ class HydratedBlocDelegate extends BlocDelegate {
     if (bloc is HydratedBloc) {
       final stateJson = bloc.toJson(state);
       if (stateJson != null) {
-        storage.write(bloc.storageToken, json.encode(stateJson));
+        storage.write(bloc.storageToken, stateJson);
       }
     }
   }
