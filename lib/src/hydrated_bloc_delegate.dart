@@ -47,4 +47,14 @@ class HydratedBlocDelegate extends BlocDelegate {
       }
     }
   }
+
+  @override
+  void onError(Bloc bloc, Object error, StackTrace stacktrace) {
+    super.onError(bloc, error, stacktrace);
+    assert(
+      false,
+      'Your $bloc has some problems with `toJsoun`yfication, '
+      'hence you have a problem too🥳',
+    );
+  }
 }
