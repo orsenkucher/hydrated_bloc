@@ -177,7 +177,7 @@ void blocGroup() {
 
       test('stores initialState when instantiated', () {
         verify<dynamic>(
-          storage.write('MyHydratedBloc', '{"value":0}'),
+          storage.write('MyHydratedBloc', {"value": 0}),
         ).called(1);
       });
 
@@ -189,7 +189,7 @@ void blocGroup() {
 
       test('initialState should return 101 when fromJson returns 101', () {
         when<dynamic>(storage.read('MyHydratedBloc'))
-            .thenReturn(json.encode({'value': 101}));
+            .thenReturn({'value': 101});
         expect(bloc.initialState, 101);
         verify<dynamic>(storage.read('MyHydratedBloc')).called(2);
       });
@@ -224,12 +224,12 @@ void blocGroup() {
       test('initialState should return 101/102 when fromJson returns 101/102',
           () {
         when<dynamic>(storage.read('MyMultiHydratedBlocA'))
-            .thenReturn(json.encode({'value': 101}));
+            .thenReturn({'value': 101});
         expect(multiBlocA.initialState, 101);
         verify<dynamic>(storage.read('MyMultiHydratedBlocA')).called(2);
 
         when<dynamic>(storage.read('MyMultiHydratedBlocB'))
-            .thenReturn(json.encode({'value': 102}));
+            .thenReturn({'value': 102});
         expect(multiBlocB.initialState, 102);
         verify<dynamic>(storage.read('MyMultiHydratedBlocB')).called(2);
       });
@@ -253,7 +253,7 @@ void blocGroup() {
       });
 
       test('correctly caches computed initialState', () {
-        String cachedState;
+        dynamic cachedState;
         when<dynamic>(storage.write('MyUuidHydratedBloc', any))
             .thenReturn(null);
         when<dynamic>(storage.read('MyUuidHydratedBloc'))
@@ -286,6 +286,9 @@ void blocGroup() {
       });
 
       test('calls onError when json decode fails', () async {
+        // TODO encoding is moved to stroage
+        // it will throw error as well,
+        // have to adjust test
         Object lastError;
         StackTrace lastStackTrace;
         when(storage.read(any)).thenReturn('invalid json');
@@ -356,7 +359,7 @@ void storageGroup() {
         test('returns correct value when file exists', () async {
           final file = File('./.hydrated_bloc.json');
           file.writeAsStringSync(json.encode({
-            "CounterBloc": {"value": 4}
+            "CounterBloc": json.encode({"value": 4}),
           }));
           hydratedStorage = await HydratedBlocStorage.getInstance();
           expect(hydratedStorage.read('CounterBloc')['value'] as int, 4);
@@ -377,9 +380,34 @@ void storageGroup() {
       group('write', () {
         test('writes to file', () async {
           hydratedStorage = await HydratedBlocStorage.getInstance();
-          await hydratedStorage.write('CounterBloc', json.encode({"value": 4}));
+          await hydratedStorage.write('CounterBloc', {"value": 4});
+          expect(hydratedStorage.read('CounterBloc'), {"value": 4});
+        });
 
-          expect(hydratedStorage.read('CounterBloc'), '{"value":4}');
+        test('writes to file, read from fresh', () async {
+          hydratedStorage = await HydratedBlocStorage.getInstance();
+          await hydratedStorage.write('CounterBloc', {"value": 4});
+
+          hydratedStorage = await HydratedBlocStorage.getInstance();
+          expect(hydratedStorage.read('CounterBloc'), {"value": 4});
+        });
+
+        test('writes to file multi', () async {
+          hydratedStorage = await HydratedBlocStorage.getInstance(
+            mode: StorageMode.multifile,
+          );
+          await hydratedStorage.write('CounterBloc', {"value": 4});
+
+          expect(hydratedStorage.read('CounterBloc'), {"value": 4});
+        });
+
+        test('writes to temporal', () async {
+          hydratedStorage = await HydratedBlocStorage.getInstance(
+            mode: StorageMode.temporal,
+          );
+          await hydratedStorage.write('CounterBloc', {"value": 4});
+
+          expect(hydratedStorage.read('CounterBloc'), {"value": 4});
         });
       });
 
@@ -387,9 +415,9 @@ void storageGroup() {
         test('calls deletes file, clears storage, and resets instance',
             () async {
           hydratedStorage = await HydratedBlocStorage.getInstance();
-          await hydratedStorage.write('CounterBloc', json.encode({"value": 4}));
+          await hydratedStorage.write('CounterBloc', {"value": 4});
 
-          expect(hydratedStorage.read('CounterBloc'), '{"value":4}');
+          expect(hydratedStorage.read('CounterBloc'), {"value": 4});
           await hydratedStorage.clear();
           expect(hydratedStorage.read('CounterBloc'), isNull);
           final file = File('./.hydrated_bloc.json');
@@ -408,9 +436,9 @@ void storageGroup() {
 
         test('deletes existing key value pair', () async {
           hydratedStorage = await HydratedBlocStorage.getInstance();
-          await hydratedStorage.write('CounterBloc', json.encode({"value": 4}));
+          await hydratedStorage.write('CounterBloc', {"value": 4});
 
-          expect(hydratedStorage.read('CounterBloc'), '{"value":4}');
+          expect(hydratedStorage.read('CounterBloc'), {"value": 4});
 
           await hydratedStorage.delete('CounterBloc');
           expect(hydratedStorage.read('CounterBloc'), isNull);
@@ -439,8 +467,8 @@ void storageGroup() {
         test('returns correct value when file exists', () async {
           final file = File('./.hydrated_bloc.json');
           file.writeAsStringSync(json.encode({
-            "CounterBloc": {"value": 4}
-          }));
+            "CounterBloc": json.encode({"value": 4})
+          })); // This asserts backward compatibility!
           hydratedStorage = await HydratedBlocStorage.getInstance(
             storageDirectory: Directory.current,
           );
@@ -466,9 +494,8 @@ void storageGroup() {
           hydratedStorage = await HydratedBlocStorage.getInstance(
             storageDirectory: Directory.current,
           );
-          await hydratedStorage.write('CounterBloc', json.encode({"value": 4}));
-
-          expect(hydratedStorage.read('CounterBloc'), '{"value":4}');
+          await hydratedStorage.write('CounterBloc', {"value": 4});
+          expect(hydratedStorage.read('CounterBloc'), {"value": 4});
         });
       });
 
@@ -504,11 +531,13 @@ void storageGroup() {
           hydratedStorage = await HydratedBlocStorage.getInstance(
             storageDirectory: Directory.current,
           );
-          await hydratedStorage.write('CounterBloc', json.encode({"value": 4}));
 
-          expect(hydratedStorage.read('CounterBloc'), '{"value":4}');
+          await hydratedStorage.write('CounterBloc', {"value": 4});
+          expect(hydratedStorage.read('CounterBloc'), {"value": 4});
+
           await hydratedStorage.clear();
           expect(hydratedStorage.read('CounterBloc'), isNull);
+
           final file = File('./.hydrated_bloc.json');
           expect(file.existsSync(), false);
         });
@@ -529,9 +558,9 @@ void storageGroup() {
           hydratedStorage = await HydratedBlocStorage.getInstance(
             storageDirectory: Directory.current,
           );
-          await hydratedStorage.write('CounterBloc', json.encode({"value": 4}));
 
-          expect(hydratedStorage.read('CounterBloc'), '{"value":4}');
+          await hydratedStorage.write('CounterBloc', {"value": 4});
+          expect(hydratedStorage.read('CounterBloc'), {"value": 4});
 
           await hydratedStorage.delete('CounterBloc');
           expect(hydratedStorage.read('CounterBloc'), isNull);
@@ -576,7 +605,7 @@ void delegateGroup() {
       when(bloc.id).thenReturn('');
       when(bloc.toJson('nextState')).thenReturn(expected);
       delegate.onTransition(bloc, transition);
-      verify(storage.write('MockBloc', json.encode(expected))).called(1);
+      verify(storage.write('MockBloc', expected)).called(1);
     });
 
     test('should call storage.write when onTransition is called with bloc id',
@@ -590,7 +619,7 @@ void delegateGroup() {
       when(bloc.id).thenReturn('A');
       when(bloc.toJson('nextState')).thenReturn(expected);
       delegate.onTransition(bloc, transition);
-      verify(storage.write('MockBlocA', json.encode(expected))).called(1);
+      verify(storage.write('MockBlocA', expected)).called(1);
     });
 
     test('should call onError when storage.write throws', () {
@@ -643,7 +672,7 @@ void delegateGroup() {
         when(bloc.id).thenReturn('');
         when(bloc.toJson('nextState')).thenReturn(expected);
         delegate.onTransition(bloc, transition);
-        expect(delegate.storage.read('MockBloc'), '{"nextState":"json"}');
+        expect(delegate.storage.read('MockBloc'), {"nextState": "json"});
       });
 
       test(
@@ -660,7 +689,7 @@ void delegateGroup() {
         when(bloc.id).thenReturn('A');
         when(bloc.toJson('nextState')).thenReturn(expected);
         delegate.onTransition(bloc, transition);
-        expect(delegate.storage.read('MockBlocA'), '{"nextState":"json"}');
+        expect(delegate.storage.read('MockBlocA'), {"nextState": "json"});
       });
     });
 
@@ -680,7 +709,7 @@ void delegateGroup() {
         when(bloc.id).thenReturn('');
         when(bloc.toJson('nextState')).thenReturn(expected);
         delegate.onTransition(bloc, transition);
-        expect(delegate.storage.read('MockBloc'), '{"nextState":"json"}');
+        expect(delegate.storage.read('MockBloc'), {"nextState": "json"});
       });
 
       test(
@@ -699,7 +728,7 @@ void delegateGroup() {
         when(bloc.id).thenReturn('A');
         when(bloc.toJson('nextState')).thenReturn(expected);
         delegate.onTransition(bloc, transition);
-        expect(delegate.storage.read('MockBlocA'), '{"nextState":"json"}');
+        expect(delegate.storage.read('MockBlocA'), {"nextState": "json"});
       });
     });
   });

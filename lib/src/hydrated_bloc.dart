@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart';
 import 'package:bloc/bloc.dart';
 
 import '../hydrated_bloc.dart';
@@ -17,9 +17,9 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
     final stateJson = toJson(state);
     if (stateJson != null) {
       try {
-        _storage.write(storageToken, json.encode(stateJson));
+        _storage.write(storageToken, stateJson);
       } on dynamic catch (error, stackTrace) {
-        _handleError(error, stackTrace);
+        onError(error, stackTrace);
       }
     }
   }
@@ -32,14 +32,25 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   @override
   State get initialState {
     try {
-      final jsonString = _storage.read(storageToken) as String;
-      return jsonString?.isNotEmpty == true
-          ? fromJson(json.decode(jsonString) as Map<String, dynamic>)
-          : null;
+      return fromJson(_storage?.read(storageToken) as Map<String, dynamic>);
     } on dynamic catch (error, stackTrace) {
-      _handleError(error, stackTrace);
+      onError(error, stackTrace);
       return null;
     }
+  }
+
+  @override
+  void onTransition(Transition<Event, State> transition) {
+    final state = transition.nextState;
+    final stateJson = toJson(state);
+    if (stateJson != null) {
+      try {
+        _storage.write(storageToken, stateJson);
+      } on dynamic catch (error, stackTrace) {
+        onError(error, stackTrace);
+      }
+    }
+    super.onTransition(transition);
   }
 
   /// `id` is used to uniquely identify multiple instances
@@ -74,9 +85,4 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   ///
   /// If `toJson` returns `null`, then no state changes will be persisted.
   Map<String, dynamic> toJson(State state);
-
-  void _handleError(Object error, [StackTrace stackTrace]) {
-    _delegate.onError(this, error, stackTrace);
-    onError(error, stackTrace);
-  }
 }
