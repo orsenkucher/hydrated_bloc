@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:meta/meta.dart';
-import 'package:flutter/foundation.dart';
 import 'package:bloc/bloc.dart';
 
 import '../hydrated_bloc.dart';
@@ -32,7 +31,9 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   @override
   State get initialState {
     try {
-      return fromJson(_storage?.read(storageToken) as Map<String, dynamic>);
+      final stateJson = _storage.read(storageToken) as Map<String, dynamic>;
+      if (stateJson == null) return null;
+      return fromJson(stateJson);
     } on dynamic catch (error, stackTrace) {
       onError(error, stackTrace);
       return null;
@@ -64,7 +65,7 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
 
   /// `storageToken` is used as registration token for hydrated storage.
   @nonVirtual
-  String get storageToken => '${runtimeType.toString()}$id';
+  String get storageToken => '${runtimeType.toString()}${id ?? ''}';
 
   /// `clear` is used to wipe or invalidate the cache of a `HydratedBloc`.
   /// Calling `clear` will delete the cached state of the bloc
