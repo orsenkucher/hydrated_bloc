@@ -6,6 +6,8 @@ import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:synchronized/synchronized.dart';
 
+import '../hydrated_bloc.dart';
+
 /// Interface which `HydratedBlocDelegate` uses to persist and retrieve
 /// state changes from the local device.
 abstract class HydratedStorage {
@@ -29,19 +31,19 @@ class HydratedBlocStorage extends HydratedStorage {
   /// [storageDirectory] can optionally be provided.
   /// By default, `getTemporaryDirectory` is used.
   ///
-  /// [encryptionCipher] is Hive's `HiveCipher`,
-  /// You can provide default one using following snippet:
+  /// With [encryptionCipher] you can provide custom encryption.
+  /// Following snippet shows how to make default one:
   /// ```dart
   /// import 'package:crypto/crypto.dart';
-  /// import 'package:hive/hive.dart';
+  /// import 'package:hydrated_bloc/hydrated_bloc.dart';
   ///
   /// const password = 'hydration';
   /// final byteskey = sha256.convert(utf8.encode(pass)).bytes;
-  /// return HiveAesCipher(byteskey);
+  /// return HydratedAesCipher(byteskey);
   /// ```
   static Future<HydratedBlocStorage> getInstance({
     Directory storageDirectory,
-    HiveCipher encryptionCipher,
+    HydratedCipher encryptionCipher,
   }) {
     return _lock.synchronized(() async {
       if (_instance != null) {
@@ -54,29 +56,33 @@ class HydratedBlocStorage extends HydratedStorage {
       }
 
       final box = await Hive.openBox(
-        'niagara+',
+        'hydrated_box',
         encryptionCipher: encryptionCipher,
       );
 
-      final singlet = await CellSinglet.instance(
-        directory,
-        (file) => StringCell(file),
-      );
-
-      final tokens = singlet.tokens;
-      if (tokens.isNotEmpty) {
-        for (final token in tokens) {
-          try {
-            final string = await singlet.read(token);
-            final object = json.decode(string);
-            await box.put(token, object);
-          } on dynamic catch (_) {}
-        }
-        await singlet.clear();
-      }
+      await _migrate(directory, box);
 
       return _instance = HydratedBlocStorage._(box);
     });
+  }
+
+  static Future _migrate(Directory directory, Box box) async {
+    final file = File('${directory.path}/.hydrated_bloc.json');
+    if (await file.exists()) {
+      try {
+        final storageJson = json.decode(await file.readAsString());
+        final cache = (storageJson as Map).cast<String, String>();
+        for (final key in cache.keys) {
+          try {
+            final string = cache[key];
+            final object = json.decode(string);
+            await box.put(key, object);
+          } on dynamic catch (_) {}
+        }
+      } on dynamic catch (_) {} finally {
+        await file.delete();
+      }
+    }
   }
 
   static final _lock = Lock();
@@ -122,71 +128,3 @@ class HydratedBlocStorage extends HydratedStorage {
     }
   }
 }
-
-/// `CellSinglet` is storage of one file.
-class CellSinglet {
-  /// Returns an instance of `CellSinglet`.
-  /// [cellFactory] is used to produce
-  /// one [StringCell] inside [directory].
-  static Future<CellSinglet> instance(
-    Directory directory,
-    CellFactory cellFactory,
-  ) async {
-    final cell = cellFactory(File('${directory.path}/.hydrated_bloc.json'));
-    var storage = <String, String>{};
-
-    if (await cell.exists()) {
-      try {
-        final storageJson = json.decode(await cell.read());
-        storage = (storageJson as Map).cast<String, String>();
-      } on dynamic catch (_) {
-        await cell.delete();
-      }
-    }
-
-    return CellSinglet._(storage, cell);
-  }
-
-  CellSinglet._(this._cache, this._cell);
-  final Map<String, String> _cache;
-  final StringCell _cell;
-
-  /// Iterable of registered tokens
-  Iterable<String> get tokens => _cache.keys;
-
-  /// Returns record for token
-  String read(String token) {
-    return _cache[token];
-  }
-
-  /// Voids all records
-  Future<void> clear() async {
-    _cache.clear();
-    if (await _cell.exists()) {
-      await _cell.delete();
-    }
-  }
-}
-
-/// `StringCell` is a cell which stores text contents.
-class StringCell {
-  final File _file;
-
-  /// Creates `StringCell` object
-  StringCell(this._file);
-
-  ///Checks whether the cell exists
-  Future<bool> exists() => _file.exists();
-
-  /// Read cell contents
-  Future<String> read() => _file.readAsString();
-
-  /// Write to cell
-  Future<void> write(String contents) => _file.writeAsString(contents);
-
-  /// Delete cell
-  Future<void> delete() => _file.delete();
-}
-
-/// This factory creates `StringCell`s
-typedef CellFactory = StringCell Function(File file);

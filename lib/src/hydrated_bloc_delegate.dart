@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:bloc/bloc.dart';
-import 'package:hive/hive.dart';
 
 import '../hydrated_bloc.dart';
 
@@ -22,19 +21,19 @@ class HydratedBlocDelegate extends BlocDelegate {
   /// If you want to customize `HydratedBlocDelegate`
   /// you can extend `HydratedBlocDelegate` and perform the necessary overrides.
   ///
-  /// [encryptionCipher] is Hive's `HiveCipher`,
-  /// You can provide default one using following snippet:
+  /// With [encryptionCipher] you can provide custom encryption.
+  /// Following snippet shows how to make default one:
   /// ```dart
   /// import 'package:crypto/crypto.dart';
-  /// import 'package:hive/hive.dart';
+  /// import 'package:hydrated_bloc/hydrated_bloc.dart';
   ///
   /// const password = 'hydration';
   /// final byteskey = sha256.convert(utf8.encode(pass)).bytes;
-  /// return HiveAesCipher(byteskey);
+  /// return HydratedAesCipher(byteskey);
   /// ```
   static Future<HydratedBlocDelegate> build({
     Directory storageDirectory,
-    HiveCipher encryptionCipher,
+    HydratedCipher encryptionCipher,
   }) async {
     return HydratedBlocDelegate(
       await HydratedBlocStorage.getInstance(
