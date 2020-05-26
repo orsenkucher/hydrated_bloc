@@ -23,9 +23,7 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
     }
   }
 
-  static HydratedBlocDelegate get _delegate =>
-      BlocSupervisor.delegate as HydratedBlocDelegate;
-  static HydratedStorage get _storage => _delegate.storage;
+  HydratedStorage get _storage => Hydrated.storage("name");
 
   @mustCallSuper
   @override
