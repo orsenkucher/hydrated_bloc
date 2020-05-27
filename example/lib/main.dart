@@ -20,6 +20,7 @@ void main() async {
   final byteskey = sha256.convert(utf8.encode(password)).bytes;
   await Hydrated.config({
     'secure': ScopeConfig(encryptionCipher: HydratedAesCipher(byteskey)),
+    'number': ScopeConfig(),
   });
   runApp(App());
 }
@@ -27,66 +28,100 @@ void main() async {
 class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Hydrated.scope('secure')(HydratedProvider<CounterBloc>(
+    return Hydrated.scope('number')(HydratedProvider<CounterBloc>(
       create: (context, scope) => CounterBloc(scope),
-      child: MaterialApp(
-        title: 'Flutter Demo',
-        home: CounterPage(),
-      ),
+      child: Builder(builder: (context) {
+        return Hydrated.scope('secure')(HydratedProvider<CounterBloc>(
+          create: (context, scope) => CounterBloc(scope),
+          child: MaterialApp(
+            title: 'Flutter Demo',
+            home: CounterPage(context.bloc<CounterBloc>()),
+          ),
+        ));
+      }),
     ));
   }
 }
 
 class CounterPage extends StatelessWidget {
+  final CounterBloc counterBlocOuter;
+  const CounterPage(this.counterBlocOuter);
+
   @override
   Widget build(BuildContext context) {
-    final CounterBloc counterBloc = HydratedProvider.of<CounterBloc>(context);
+    final CounterBloc counterBlocInner = context.bloc<CounterBloc>();
     return Scaffold(
       appBar: AppBar(title: Text('Counter')),
       body: BlocBuilder<CounterBloc, CounterState>(
-        builder: (BuildContext context, CounterState state) {
-          return Center(
-            child: Text(
-              '${state.value}',
-              style: TextStyle(fontSize: 24.0),
-            ),
+        bloc: counterBlocOuter,
+        builder: (BuildContext context, CounterState stateOuter) {
+          return BlocBuilder<CounterBloc, CounterState>(
+            builder: (BuildContext context, CounterState stateInner) {
+              return Center(
+                child: Text(
+                  'inner: ${stateInner.value}\nouter: ${stateOuter.value}',
+                  style: TextStyle(fontSize: 24.0),
+                ),
+              );
+            },
           );
         },
       ),
-      floatingActionButton: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.end,
-        children: <Widget>[
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 5.0),
-            child: FloatingActionButton(
-              child: Icon(Icons.add),
-              onPressed: () {
-                counterBloc.add(CounterEvent.increment);
-              },
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 5.0),
-            child: FloatingActionButton(
-              child: Icon(Icons.remove),
-              onPressed: () {
-                counterBloc.add(CounterEvent.decrement);
-              },
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 5.0),
-            child: FloatingActionButton(
-              child: Icon(Icons.delete_forever),
-              onPressed: () async {
-                await counterBloc.clear();
-                counterBloc.add(CounterEvent.reset);
-              },
-            ),
-          ),
+        children: [
+          FabColumn(counterBloc: counterBlocInner),
+          SizedBox(width: 12),
+          FabColumn(counterBloc: counterBlocOuter),
         ],
       ),
+    );
+  }
+}
+
+class FabColumn extends StatelessWidget {
+  const FabColumn({
+    Key key,
+    @required this.counterBloc,
+  }) : super(key: key);
+
+  final CounterBloc counterBloc;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: <Widget>[
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 5.0),
+          child: FloatingActionButton(
+            child: Icon(Icons.add),
+            onPressed: () {
+              counterBloc.add(CounterEvent.increment);
+            },
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 5.0),
+          child: FloatingActionButton(
+            child: Icon(Icons.remove),
+            onPressed: () {
+              counterBloc.add(CounterEvent.decrement);
+            },
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 5.0),
+          child: FloatingActionButton(
+            child: Icon(Icons.delete_forever),
+            onPressed: () async {
+              await counterBloc.clear();
+              counterBloc.add(CounterEvent.reset);
+            },
+          ),
+        ),
+      ],
     );
   }
 }

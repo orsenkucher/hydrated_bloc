@@ -13,12 +13,10 @@ class Hydrated {
   final _storages = <String, HydratedStorage>{};
 
   Future<void> config$(Map<String, ScopeConfig> configs) async {
-    for (final key in configs.keys) {
-      _builders[key] = (child) => HydratedScope(token: key, child: child);
-      final cfg = configs[key];
-      _storages[key] = await HydratedBlocStorage.getInstance(
-        storageDirectory: cfg.storageDirectory,
-        encryptionCipher: cfg.encryptionCipher,
+    for (final token in configs.keys) {
+      _builders[token] = (child) => HydratedScope(token: token, child: child);
+      _storages[token] = await HydratedBlocStorage.getScoped(
+        config: configs[token].tokenize(token),
       );
     }
   }
@@ -38,10 +36,29 @@ class Hydrated {
   }
 }
 
+class TokenedConfig extends ScopeConfig {
+  final String token;
+  const TokenedConfig({
+    @required this.token,
+    Directory storageDirectory,
+    HydratedCipher encryptionCipher,
+  }) : super(
+          storageDirectory: storageDirectory,
+          encryptionCipher: encryptionCipher,
+        );
+}
+
 class ScopeConfig {
   const ScopeConfig({this.storageDirectory, this.encryptionCipher});
   final Directory storageDirectory;
   final HydratedCipher encryptionCipher;
+  TokenedConfig tokenize(String token) {
+    return TokenedConfig(
+      token: token,
+      storageDirectory: storageDirectory,
+      encryptionCipher: encryptionCipher,
+    );
+  }
 }
 
 class HydratedScope extends InheritedWidget {
