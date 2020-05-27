@@ -11,6 +11,7 @@ dependencies:
   hydrated_bloc:
     path: ../
   flutter_bloc: ^4.0.0
+  crypto: ^2.1.5
   path_provider_fde:
     git:
       url: https://github.com/google/flutter-desktop-embedding

@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
 import 'package:bloc/bloc.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
+import 'package:crypto/crypto.dart';
 
 void main() async {
   // https://github.com/flutter/flutter/pull/38464
@@ -13,26 +15,32 @@ void main() async {
   // As a result, you will need the following line if you're using Flutter >=1.9.4.
   WidgetsFlutterBinding.ensureInitialized();
   BlocSupervisor.delegate = await HydratedBlocDelegate.build();
+
+  const password = 'hydration';
+  final byteskey = sha256.convert(utf8.encode(password)).bytes;
+  await Hydrated.config({
+    'secure': ScopeConfig(encryptionCipher: HydratedAesCipher(byteskey)),
+  });
   runApp(App());
 }
 
 class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<CounterBloc>(
-      create: (context) => CounterBloc(),
+    return Hydrated.scope('secure')(HydratedProvider<CounterBloc>(
+      create: (context, scope) => CounterBloc(scope),
       child: MaterialApp(
         title: 'Flutter Demo',
         home: CounterPage(),
       ),
-    );
+    ));
   }
 }
 
 class CounterPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final CounterBloc counterBloc = BlocProvider.of<CounterBloc>(context);
+    final CounterBloc counterBloc = HydratedProvider.of<CounterBloc>(context);
     return Scaffold(
       appBar: AppBar(title: Text('Counter')),
       body: BlocBuilder<CounterBloc, CounterState>(
@@ -95,6 +103,8 @@ class CounterState {
 }
 
 class CounterBloc extends HydratedBloc<CounterEvent, CounterState> {
+  CounterBloc(String scope) : super(scope);
+
   @override
   CounterState get initialState => super.initialState ?? CounterState(0);
 

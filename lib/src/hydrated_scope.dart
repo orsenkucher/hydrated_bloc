@@ -7,32 +7,36 @@ import '../hydrated_bloc.dart';
 
 typedef ScopeBuilder = HydratedScope Function(Widget child);
 
-class HydratedImpl {
+class Hydrated {
+  static Hydrated _hydrated;
   final _builders = <String, ScopeBuilder>{};
   final _storages = <String, HydratedStorage>{};
-  Future<void> config(Map<String, ScopeConfig> configs) {
-    configs.forEach((k, v) async {
-      // TODO fix
-      _builders[k] = (child) => HydratedScope(name: k, child: child);
-      _storages[k] = await HydratedBlocStorage.getInstance(
-        storageDirectory: v.storageDirectory,
-        encryptionCipher: v.encryptionCipher,
+
+  Future<void> config$(Map<String, ScopeConfig> configs) async {
+    for (final key in configs.keys) {
+      _builders[key] = (child) => HydratedScope(token: key, child: child);
+      final cfg = configs[key];
+      _storages[key] = await HydratedBlocStorage.getInstance(
+        storageDirectory: cfg.storageDirectory,
+        encryptionCipher: cfg.encryptionCipher,
       );
-    });
+    }
   }
 
-  ScopeBuilder scope(String name) {
-    return _builders[name];
+  static Future<void> config(Map<String, ScopeConfig> configs) async {
+    final hydrated = Hydrated();
+    await hydrated.config$(configs);
+    _hydrated = hydrated;
   }
 
-  HydratedStorage storage(String name) {
-    return _storages[name];
+  static ScopeBuilder scope(String name) {
+    return _hydrated._builders[name];
+  }
+
+  static HydratedStorage storage(String name) {
+    return _hydrated._storages[name];
   }
 }
-
-// extension BuildContext$ on BuildContext{
-// //   ScopeBuilder scopeBuilder() => this.
-// }
 
 class ScopeConfig {
   const ScopeConfig({this.storageDirectory, this.encryptionCipher});
@@ -43,18 +47,22 @@ class ScopeConfig {
 class HydratedScope extends InheritedWidget {
   const HydratedScope({
     Key key,
-    @required this.name,
     @required child,
-  })  : assert(name != null),
+    @required this.token,
+  })  : assert(token != null),
         assert(child != null),
         super(key: key, child: child);
 
-  final String name;
+  final String token;
 
   static HydratedScope of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<HydratedScope>();
   }
 
   @override
-  bool updateShouldNotify(HydratedScope old) => name != old.name;
+  bool updateShouldNotify(HydratedScope old) => token != old.token;
+}
+
+extension BuildContext$ on BuildContext {
+  HydratedScope scope() => HydratedScope.of(this);
 }
