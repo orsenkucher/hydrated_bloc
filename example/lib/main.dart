@@ -29,10 +29,10 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Hydrated.scope('number')(HydratedProvider<CounterBloc>(
-      create: (context, scope) => CounterBloc(scope),
+      create: (context) => CounterBloc(),
       child: Builder(builder: (context) {
         return Hydrated.scope('secure')(HydratedProvider<CounterBloc>(
-          create: (context, scope) => CounterBloc(scope),
+          create: (context) => CounterBloc(),
           child: MaterialApp(
             title: 'Flutter Demo',
             home: CounterPage(context.bloc<CounterBloc>()),
@@ -138,8 +138,6 @@ class CounterState {
 }
 
 class CounterBloc extends HydratedBloc<CounterEvent, CounterState> {
-  CounterBloc(String scope) : super(scope);
-
   @override
   CounterState get initialState => super.initialState ?? CounterState(0);
 

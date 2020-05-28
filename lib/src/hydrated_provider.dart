@@ -9,8 +9,6 @@ import '../hydrated_bloc.dart';
 /// of multiple [HydratedProvider]s.
 mixin BlocProviderSingleChildWidget on SingleChildWidget {}
 
-typedef HydratedCreate<T> = T Function(BuildContext context, String scopeToken);
-
 /// {@template blocprovider}
 /// Takes a [ValueBuilder] that is responsible for creating the [bloc] and
 /// a [child] which will have access to the [bloc] via
@@ -39,12 +37,12 @@ class HydratedProvider<T extends HydratedBloc>
 
   final Dispose<T> _dispose;
 
-  final HydratedCreate<T> _create;
+  final Create<T> _create;
 
   /// {@macro blocprovider}
   HydratedProvider({
     Key key,
-    @required HydratedCreate<T> create,
+    @required Create<T> create,
     Widget child,
     bool lazy,
   }) : this._(
@@ -78,7 +76,7 @@ class HydratedProvider<T extends HydratedBloc>
     Widget child,
   }) : this._(
           key: key,
-          create: (_, __) => value,
+          create: (_) => value,
           child: child,
         );
 
@@ -86,7 +84,7 @@ class HydratedProvider<T extends HydratedBloc>
   /// Used by the [HydratedProvider] default and value constructors.
   HydratedProvider._({
     Key key,
-    @required HydratedCreate<T> create,
+    @required Create<T> create,
     Dispose<T> dispose,
     this.child,
     this.lazy,
@@ -123,9 +121,11 @@ class HydratedProvider<T extends HydratedBloc>
   @override
   Widget buildWithChild(BuildContext context, Widget child) {
     final token = context.scope().token;
-    create(BuildContext context) => _create(context, token);
     return InheritedProvider<T>(
-      create: create,
+      create: (context) {
+        Hydrated.register(token);
+        return _create(context);
+      },
       dispose: _dispose,
       child: child,
       lazy: lazy,

@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -11,6 +12,7 @@ class Hydrated {
   static Hydrated _hydrated;
   final _builders = <String, ScopeBuilder>{};
   final _storages = <String, HydratedStorage>{};
+  final _pendings = ListQueue<String>();
 
   Future<void> config$(Map<String, ScopeConfig> configs) async {
     for (final token in configs.keys) {
@@ -21,10 +23,26 @@ class Hydrated {
     }
   }
 
+  void register$(String pendingToken) {
+    _pendings.add(pendingToken);
+  }
+
+  String acquire$() {
+    return _pendings.removeFirst();
+  }
+
   static Future<void> config(Map<String, ScopeConfig> configs) async {
     final hydrated = Hydrated();
     await hydrated.config$(configs);
     _hydrated = hydrated;
+  }
+
+  static void register(String pendingToken) {
+    _hydrated.register$(pendingToken);
+  }
+
+  static String acquire() {
+    return _hydrated.acquire$();
   }
 
   static ScopeBuilder scope(String name) {

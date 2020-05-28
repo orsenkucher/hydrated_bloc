@@ -12,7 +12,7 @@ import '../hydrated_bloc.dart';
 /// {@endtemplate}
 abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   /// {@macro hydrated_bloc}
-  HydratedBloc([this._scopeToken]) {
+  HydratedBloc() : _scopeToken = Hydrated.acquire() {
     final stateJson = toJson(state);
     if (stateJson != null) {
       try {
