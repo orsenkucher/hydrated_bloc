@@ -1,9 +1,8 @@
+import 'package:bloc/bloc.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
-
-import '../hydrated_bloc.dart';
 
 /// Mixin which allows `MultiBlocProvider` to infer the types
 /// of multiple [HydratedProvider]s.
@@ -26,8 +25,8 @@ mixin BlocProviderSingleChildWidget on SingleChildWidget {}
 /// );
 /// ```
 /// {@endtemplate}
-class HydratedProvider<T extends HydratedBloc>
-    extends SingleChildStatelessWidget with BlocProviderSingleChildWidget {
+class HydratedProvider<T extends Bloc> extends SingleChildStatelessWidget
+    with BlocProviderSingleChildWidget {
   /// [child] and its descendants which will have access to the [bloc].
   final Widget child;
 
@@ -101,7 +100,7 @@ class HydratedProvider<T extends HydratedBloc>
   /// ```dart
   /// BlocProvider.of<BlocA>(context)
   /// ```
-  static T of<T extends HydratedBloc>(BuildContext context) {
+  static T of<T extends Bloc>(BuildContext context) {
     try {
       return Provider.of<T>(context, listen: false);
     } on ProviderNotFoundException catch (_) {
@@ -118,17 +117,36 @@ class HydratedProvider<T extends HydratedBloc>
     }
   }
 
+  static final _precursors = <CreatePrecursor>[];
+
+  // final List<Create<T> Function(BuildContext, Create<T>)> precursor = [
+  //   (context, create) {
+  //     final token = context.scope().token;
+  //     return (context) {
+  //       Hydrated.register(token);
+  //       return create(context);
+  //     };
+  //   }
+  // ];
+
+  static void registerPrecursor(CreatePrecursor precursor) {
+    _precursors.add(precursor);
+  }
+
+  static bool unregisterPrecursor(CreatePrecursor precursor) {
+    return _precursors.remove(precursor);
+  }
+
   @override
   Widget buildWithChild(BuildContext context, Widget child) {
-    final token = context.scope().token;
+    final fn = _precursors.fold(_create, (create, fn) => fn(context, create));
     return InheritedProvider<T>(
-      create: (context) {
-        Hydrated.register(token);
-        return _create(context);
-      },
+      create: (context) => fn(context) as T,
       dispose: _dispose,
       child: child,
       lazy: lazy,
     );
   }
 }
+
+typedef CreatePrecursor = Create Function(BuildContext, Create);

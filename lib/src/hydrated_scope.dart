@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-import '../hydrated_bloc.dart';
+import '../hydrated_bloc.dart' hide BuildContext$;
 
 typedef ScopeBuilder = HydratedScope Function(Widget child);
 
@@ -32,25 +32,36 @@ class Hydrated {
   }
 
   static Future<void> config(Map<String, ScopeConfig> configs) async {
+    HydratedProvider.registerPrecursor((context, create) {
+      final token = context.scope().token;
+      return (context) {
+        Hydrated.register(token);
+        return create(context);
+      };
+    });
     final hydrated = Hydrated();
     await hydrated.config$(configs);
     _hydrated = hydrated;
   }
 
   static void register(String pendingToken) {
-    _hydrated.register$(pendingToken);
+    _instance.register$(pendingToken);
   }
 
   static String acquire() {
-    return _hydrated.acquire$();
+    return _instance.acquire$();
   }
 
   static ScopeBuilder scope(String name) {
-    return _hydrated._builders[name];
+    return _instance._builders[name];
   }
 
   static HydratedStorage storage(String name) {
-    return _hydrated._storages[name];
+    return _instance._storages[name];
+  }
+
+  static Hydrated get _instance {
+    return _hydrated ?? (throw '`config()` should be called first ');
   }
 }
 
