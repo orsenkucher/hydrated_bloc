@@ -141,7 +141,7 @@ class HydratedProvider<T extends Bloc> extends SingleChildStatelessWidget
   Widget buildWithChild(BuildContext context, Widget child) {
     final fn = _precursors.fold(_create, (create, fn) => fn(context, create));
     return InheritedProvider<T>(
-      create: (context) => fn(context) as T,
+      create: (context) => fn?.call(context) as T,
       dispose: _dispose,
       child: child,
       lazy: lazy,
