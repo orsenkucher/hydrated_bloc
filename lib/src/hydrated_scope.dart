@@ -1,4 +1,3 @@
-import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -12,7 +11,7 @@ class Hydrated {
   static Hydrated _hydrated;
   final _builders = <String, ScopeBuilder>{};
   final _storages = <String, HydratedStorage>{};
-  final _pendings = ListQueue<String>();
+  // final _pendings = ListQueue<String>();
 
   Future<void> config$(Map<String, ScopeConfig> configs) async {
     for (final token in configs.keys) {
@@ -23,17 +22,26 @@ class Hydrated {
     }
   }
 
+  String _pending;
+
+  /// Registration and Bloc instantiation are sequential,
+  /// so one variable should be enough.
   void register$(String pendingToken) {
-    _pendings.add(pendingToken);
+    // _pendings.add(pendingToken);
+    _pending = pendingToken;
   }
 
+  /// Acquire previously registered token.
+  /// Can return `null`, when bloc was not scoped.
   String acquire$() {
-    return _pendings.removeFirst();
+    // return _pendings.removeLast();
+    return _pending;
   }
 
   static Future<void> config(Map<String, ScopeConfig> configs) async {
     HydratedProvider.registerPrecursor((context, create) {
-      final token = context.scope().token;
+      final token = context.scope()?.token;
+      if (token == null) return create;
       return (context) {
         Hydrated.register(token);
         return create(context);
@@ -48,8 +56,10 @@ class Hydrated {
     _instance.register$(pendingToken);
   }
 
+  /// Acquire previously registered token.
+  /// Can return `null`, when bloc was not scoped.
   static String acquire() {
-    return _instance.acquire$();
+    return _hydrated?.acquire$();
   }
 
   static ScopeBuilder scope(String name) {
