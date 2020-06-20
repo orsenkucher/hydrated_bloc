@@ -53,7 +53,7 @@ class Entries {
       final key = uuid.v4();
       map[key] = Iterable.generate(
         intcount,
-        (_) => random.nextInt(1 << 32),
+        (_) => random.nextInt((1 << 31)*(1 << 23)),
       ).toList();
     }
     return map;
