@@ -36,7 +36,7 @@ class App extends StatelessWidget {
             fontSize: 34,
           )),
         ),
-        home: HomePage(title: 'Hydrated v4.0.0'),
+        home: HomePage(title: 'Hydrated v5.0.0'),
         debugShowCheckedModeBanner: false,
       ),
     );
