@@ -28,7 +28,7 @@ packages:
       name: bloc
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "4.0.0"
+    version: "5.0.0"
   boolean_selector:
     dependency: transitive
     description:
@@ -58,12 +58,19 @@ packages:
     source: hosted
     version: "2.1.1"
   crypto:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: crypto
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.1.4"
+  cubit:
+    dependency: transitive
+    description:
+      name: cubit
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.1.0"
   effective_dart:
     dependency: "direct dev"
     description:
@@ -88,6 +95,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.4.1+1"
+  hydrated_cubit:
+    dependency: "direct main"
+    description:
+      name: hydrated_cubit
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.1.0"
   image:
     dependency: transitive
     description:

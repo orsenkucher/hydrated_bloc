@@ -1,9 +1,7 @@
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 
 class TestBloc extends HydratedBloc<dynamic, Map<String, int>> {
-  @override
-  Map<String, int> get initialState =>
-      super.initialState ?? <String, int>{'Initial empty map': 0};
+  TestBloc() : super(<String, int>{'Initial empty map': 0});
 
   @override
   Stream<Map<String, int>> mapEventToState(dynamic event) async* {

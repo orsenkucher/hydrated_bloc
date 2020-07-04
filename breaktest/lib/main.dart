@@ -5,7 +5,7 @@ import 'package:hydrated_bloc/hydrated_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  BlocSupervisor.delegate = await HydratedBlocDelegate.build();
+  HydratedBloc.storage = await HydratedStorage.build();
   runApp(App());
 }
 
@@ -20,7 +20,7 @@ class App extends StatelessWidget {
           appBarTheme: AppBarTheme(
               color: Colors.black,
               textTheme: TextTheme(
-                  title: TextStyle(
+                  headline6: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
               ))),
@@ -31,7 +31,7 @@ class App extends StatelessWidget {
           ),
           canvasColor: Colors.black,
           textTheme: TextTheme(
-              body1: TextStyle(
+              bodyText2: TextStyle(
             color: Colors.white,
             fontSize: 34,
           )),
