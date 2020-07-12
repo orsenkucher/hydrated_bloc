@@ -14,8 +14,16 @@ dependencies:
     sdk: flutter
   meta: ^1.1.8
   bloc: ^5.0.1
-  hydrated_cubit: ^0.1.3
-  hive: ^1.4.1+1
+  # hydrated_cubit: ^0.1.3
+  hydrated_cubit:
+    git:
+      url: https://github.com/orsenkucher/cubit.git
+      path: packages/hydrated_cubit
+  # hive: ^1.4.1+1
+  hive:
+    git: 
+      url: https://github.com/orsenkucher/hive.git
+      path: hive
   synchronized: ^2.2.0
   path_provider: ^1.6.5
 
