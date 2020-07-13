@@ -407,7 +407,7 @@ void main() {
           expect(lastStackTrace, isNotNull);
           expect(
             '$lastError',
-            "type 'String' is not a subtype of type 'Map<dynamic, dynamic>'",
+            "type 'String' is not a subtype of type 'Map<String, dynamic>'",
           );
         });
       });

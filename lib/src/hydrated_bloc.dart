@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:hydrated_cubit/hydrated_cubit.dart';
 import 'package:meta/meta.dart';
@@ -34,11 +35,39 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
     try {
       final stateJson = storage.read(storageToken);
       if (stateJson == null) return _state = super.state;
-      return _state = fromJson(Map<String, dynamic>.from(stateJson));
+      // return _state = fromJson(Map<String, dynamic>.from(stateJson));
+      return _state = fromJson(_traverse(stateJson));
     } on dynamic catch (error, stackTrace) {
       onError(error, stackTrace);
       return _state = super.state;
     }
+  }
+
+  dynamic _traverse(dynamic value) {
+    // json.encode();
+    // var keyValueList = List(map.length * 2);
+    // var i = 0;
+    // var allStringKeys = true;
+    // map.forEach((key, value) {
+    //   if (key is! String) {
+    //     allStringKeys = false;
+    //   }
+    //   keyValueList[i++] = key;
+    //   keyValueList[i++] = value;
+    // });
+    // if (!allStringKeys) return false;
+    // writeString('{');
+    // var separator = '"';
+    // for (var i = 0; i < keyValueList.length; i += 2) {
+    if (value is Map) {
+      // final map = Map<String, dynamic>.from(value);
+      final map = <String, dynamic>{}; // TODO: not String key?
+      value.forEach((key, value) {
+        map[key] = _traverse(value);
+      });
+      return map;
+    }
+    return value;
   }
 
   @override
