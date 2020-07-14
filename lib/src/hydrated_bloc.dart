@@ -13,7 +13,7 @@ import 'package:bloc/bloc.dart';
 abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   /// {@macro hydrated_bloc}
   HydratedBloc(State state) : super(state) {
-    final stateJson = toJson(this.state);
+    final stateJson = _toJson(this.state);
     if (stateJson != null) {
       try {
         storage.write(storageToken, stateJson);
@@ -53,7 +53,7 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   //   try {
   //     var customJson = _toEncodable(object);
   //     if (!writeJsonValue(customJson)) {
-  //       throw JsonUnsupportedObjectError(object, partialResult: _partialResult);
+  //   throw JsonUnsupportedObjectError(object, partialResult: _partialResult);
   //     }
   //     _removeSeen(object);
   //   } catch (e) {
@@ -97,31 +97,49 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
 //   }
 // }
 
-  // /// List of objects currently being traversed. Used to detect cycles.
-  // final List _seen = [];
+//  /// Serialize a [List].
+//   void writeList(List list) {
+//     writeString('[');
+//     if (list.isNotEmpty) {
+//       writeObject(list[0]);
+//       for (var i = 1; i < list.length; i++) {
+//         writeString(',');
+//         writeObject(list[i]);
+//       }
+//     }
+//     writeString(']');
+//   }
 
-  // /// Check if an encountered object is already being traversed.
-  // ///
-  // /// Records the object if it isn't already seen. Should have a matching call to
-  // /// [_removeSeen] when the object is no longer being traversed.
-  // void _checkCycle(object) {
-  //   for (var i = 0; i < _seen.length; i++) {
-  //     if (identical(object, _seen[i])) {
-  //       throw JsonCyclicError(object);
-  //     }
-  //   }
-  //   _seen.add(object);
-  // }
-
-  // /// Remove [object] from the list of currently traversed objects.
-  // ///
-  // /// Should be called in the opposite order of the matching [_checkCycle]
-  // /// calls.
-  // void _removeSeen(object) {
-  //   assert(_seen.isNotEmpty);
-  //   assert(identical(_seen.last, object));
-  //   _seen.removeLast();
-  // }
+//   /// Serialize a [Map].
+//   bool writeMap(Map map) {
+//     if (map.isEmpty) {
+//       writeString("{}");
+//       return true;
+//     }
+//     var keyValueList = List(map.length * 2);
+//     var i = 0;
+//     var allStringKeys = true;
+//     map.forEach((key, value) {
+//       if (key is! String) {
+//         allStringKeys = false;
+//       }
+//       keyValueList[i++] = key;
+//       keyValueList[i++] = value;
+//     });
+//     if (!allStringKeys) return false;
+//     writeString('{');
+//     var separator = '"';
+//     for (var i = 0; i < keyValueList.length; i += 2) {
+//       writeString(separator);
+//       separator = ',"';
+//       writeStringContent(keyValueList[i]);
+//       writeString('":');
+//       writeObject(keyValueList[i + 1]);
+//     }
+//     writeString('}');
+//     return true;
+//   }
+// }
 
   // bool _check(object) {
   //   if (object is num) {
@@ -144,6 +162,95 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   //   }
   // }
 
+  // ==================
+
+  final List _seen = [];
+
+  void _checkCycle(object) {
+    for (var i = 0; i < _seen.length; i++) {
+      if (identical(object, _seen[i])) {
+        throw StateCyclicError(object);
+      }
+    }
+    _seen.add(object);
+  }
+
+  void _removeSeen(object) {
+    assert(_seen.isNotEmpty);
+    assert(identical(_seen.last, object));
+    _seen.removeLast();
+  }
+
+  Map<String, dynamic> _toJson(State state) {
+    return _traverseWrite(toJson(state));
+  }
+
+  // dynamic _traverseWrite(dynamic value) {}
+
+  dynamic _traverseWrite(dynamic value) {
+    if (_checkJsonValue(value)) return _writeValueJson(value);
+    _checkCycle(value);
+    try {
+      var customJson = _toEncodable(value);
+      if (!_checkJsonValue(customJson)) {
+        throw UnsupportedStateError(value);
+      }
+      _removeSeen(value);
+      return _writeValueJson(customJson);
+    } on dynamic catch (e) {
+      throw UnsupportedStateError(value, cause: e);
+    }
+  }
+
+  dynamic _writeValueJson(dynamic value) {
+    if (value is Map) {
+      final map = <String, dynamic>{};
+      value.forEach((key, value) {
+        map[key] = _traverseWrite(value);
+      });
+      return map;
+    }
+    if (value is List) {
+      final list = <dynamic>[];
+      for (var item in value) {
+        list.add(_traverseWrite(item));
+      }
+      return list;
+    }
+    return value;
+  }
+
+  bool _checkJsonValue(object) {
+    if (object is num) {
+      if (!object.isFinite) return false;
+      return true;
+    } else if (identical(object, true)) {
+      return true;
+    } else if (identical(object, false)) {
+      return true;
+    } else if (object == null) {
+      return true;
+    } else if (object is String) {
+      return true;
+    } else if (object is List) {
+      _checkCycle(object);
+      _removeSeen(object);
+      return true;
+    } else if (object is Map) {
+      _checkCycle(object); // TODO move this
+      _removeSeen(object);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  // bool _isJson(dynamic object) {}
+
+  dynamic _toEncodable(dynamic object) => object.toJson();
+
+  // ==================
+
   dynamic _traverse(dynamic value) {
     if (value is Map) {
       final map = <String, dynamic>{};
@@ -165,7 +272,7 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   @override
   void onTransition(Transition<Event, State> transition) {
     final state = transition.nextState;
-    final stateJson = toJson(state);
+    final stateJson = _toJson(state);
     if (stateJson != null) {
       try {
         storage.write(storageToken, stateJson);
@@ -209,4 +316,34 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   ///
   /// If `toJson` returns `null`, then no state changes will be persisted.
   Map<String, dynamic> toJson(State state);
+}
+
+class StateCyclicError extends UnsupportedStateError {
+  /// The first object that was detected as part of a cycle.
+  StateCyclicError(Object object) : super(object);
+  String toString() => "Cyclic error in JSON stringify";
+}
+
+class UnsupportedStateError extends Error {
+  /// The object that could not be serialized.
+  final Object unsupportedObject;
+
+  /// The exception thrown when trying to convert the object.
+  final Object cause;
+
+  UnsupportedStateError(
+    this.unsupportedObject, {
+    this.cause,
+  });
+
+  String toString() {
+    var safeString = Error.safeToString(unsupportedObject);
+    String prefix;
+    if (cause != null) {
+      prefix = "Converting object to an encodable object failed:";
+    } else {
+      prefix = "Converting object did not return an encodable object:";
+    }
+    return "$prefix $safeString";
+  }
 }
