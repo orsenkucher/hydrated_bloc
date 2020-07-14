@@ -153,9 +153,7 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
       return map;
     }
     if (value is List) {
-      // value.sublist(start)
-      final list = value.sublist(0)..clear();
-      // final list = <dynamic>[];
+      final list = <dynamic>[];
       for (var item in value) {
         list.add(_traverse(item));
       }
