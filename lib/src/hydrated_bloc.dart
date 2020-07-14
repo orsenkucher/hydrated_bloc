@@ -198,7 +198,7 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
         throw UnsupportedStateError(value);
       }
       _removeSeen(value);
-      return customJson;
+      return kek2;
     } on dynamic catch (e) {
       throw UnsupportedStateError(value, cause: e);
     }
