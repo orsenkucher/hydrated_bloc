@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
+// import 'dart:convert';
 
 import 'package:hydrated_cubit/hydrated_cubit.dart';
 import 'package:meta/meta.dart';
@@ -188,60 +188,62 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   // dynamic _traverseWrite(dynamic value) {}
 
   dynamic _traverseWrite(dynamic value) {
-    if (_checkJsonValue(value)) return _writeValueJson(value);
+    final kek = _checkJsonValue(value);
+    if (kek is! KEK) return kek;
     _checkCycle(value);
     try {
       var customJson = _toEncodable(value);
-      if (!_checkJsonValue(customJson)) {
+      final kek2 = _checkJsonValue(customJson);
+      if (kek2 is KEK) {
         throw UnsupportedStateError(value);
       }
       _removeSeen(value);
-      return _writeValueJson(customJson);
+      return customJson;
     } on dynamic catch (e) {
       throw UnsupportedStateError(value, cause: e);
     }
   }
 
-  dynamic _writeValueJson(dynamic value) {
-    if (value is Map) {
-      final map = <String, dynamic>{};
-      value.forEach((key, value) {
-        map[key] = _traverseWrite(value);
-      });
-      return map;
-    }
-    if (value is List) {
-      final list = <dynamic>[];
-      for (var item in value) {
-        list.add(_traverseWrite(item));
-      }
-      return list;
-    }
-    return value;
-  }
+  // dynamic _writeValueJson(dynamic value) {
+  //   if (value is Map) {
 
-  bool _checkJsonValue(object) {
+  //   }
+  //   if (value is List) {
+
+  //   }
+  //   return value;
+  // }
+
+  dynamic _checkJsonValue(object) {
     if (object is num) {
-      if (!object.isFinite) return false;
-      return true;
+      if (!object.isFinite) return KEK();
+      return object;
     } else if (identical(object, true)) {
       return true;
     } else if (identical(object, false)) {
-      return true;
+      return false;
     } else if (object == null) {
-      return true;
+      return null;
     } else if (object is String) {
-      return true;
+      return object;
     } else if (object is List) {
       _checkCycle(object);
+      final list = <dynamic>[];
+      for (var elem in object) {
+        list.add(_traverseWrite(elem));
+      }
       _removeSeen(object);
-      return true;
+      return list;
     } else if (object is Map) {
-      _checkCycle(object); // TODO move this
+      _checkCycle(object);
+      final map = <String, dynamic>{};
+      object.forEach((key, value) {
+        map[key] = _traverseWrite(value);
+      });
       _removeSeen(object);
-      return true;
+      return map;
     } else {
-      return false;
+      return KEK();
     }
   }
 
@@ -347,3 +349,5 @@ class UnsupportedStateError extends Error {
     return "$prefix $safeString";
   }
 }
+
+class KEK {}
