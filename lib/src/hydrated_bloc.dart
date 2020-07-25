@@ -12,11 +12,11 @@ import '../hydrated_bloc.dart';
 /// {@endtemplate}
 abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   /// {@macro hydrated_bloc}
-  HydratedBloc() {
+  HydratedBloc() : _scopeToken = Hydrated.acquire() {
     final stateJson = toJson(state);
     if (stateJson != null) {
       try {
-        _storage.write(storageToken, stateJson);
+        _storage.write(_storageToken, stateJson);
       } on dynamic catch (error, stackTrace) {
         onError(error, stackTrace);
       }
@@ -25,13 +25,25 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
 
   static HydratedBlocDelegate get _delegate =>
       BlocSupervisor.delegate as HydratedBlocDelegate;
-  static HydratedStorage get _storage => _delegate.storage;
+
+  /// `_scopeToken` is used to find scoped storage.
+  final String _scopeToken;
+
+  /// `storageToken` is used as registration token for hydrated storage.
+  String get _storageToken => '${runtimeType.toString()}${id ?? ''}';
+
+  HydratedStorage get _storage {
+    if (_scopeToken == null) {
+      return _delegate.storage;
+    }
+    return Hydrated.storage(_scopeToken);
+  }
 
   @mustCallSuper
   @override
   State get initialState {
     try {
-      final stateJson = _storage.read(storageToken);
+      final stateJson = _storage.read(_storageToken);
       if (stateJson == null) return null;
       return fromJson(Map<String, dynamic>.from(stateJson));
     } on dynamic catch (error, stackTrace) {
@@ -46,7 +58,7 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
     final stateJson = toJson(state);
     if (stateJson != null) {
       try {
-        _storage.write(storageToken, stateJson);
+        _storage.write(_storageToken, stateJson);
       } on dynamic catch (error, stackTrace) {
         onError(error, stackTrace);
       }
@@ -63,14 +75,10 @@ abstract class HydratedBloc<Event, State> extends Bloc<Event, State> {
   /// in order to keep the caches independent of each other.
   String get id => '';
 
-  /// `storageToken` is used as registration token for hydrated storage.
-  @nonVirtual
-  String get storageToken => '${runtimeType.toString()}${id ?? ''}';
-
   /// `clear` is used to wipe or invalidate the cache of a `HydratedBloc`.
   /// Calling `clear` will delete the cached state of the bloc
   /// but will not modify the current state of the bloc.
-  Future<void> clear() => _storage.delete(storageToken);
+  Future<void> clear() => _storage.delete(_storageToken);
 
   /// Responsible for converting the `Map<String, dynamic>` representation
   /// of the bloc state into a concrete instance of the bloc state.

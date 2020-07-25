@@ -38,7 +38,7 @@ class HydratedBlocStorage extends HydratedStorage {
   /// import 'package:hydrated_bloc/hydrated_bloc.dart';
   ///
   /// const password = 'hydration';
-  /// final byteskey = sha256.convert(utf8.encode(pass)).bytes;
+  /// final byteskey = sha256.convert(utf8.encode(password)).bytes;
   /// return HydratedAesCipher(byteskey);
   /// ```
   static Future<HydratedBlocStorage> getInstance({
@@ -46,24 +46,40 @@ class HydratedBlocStorage extends HydratedStorage {
     HydratedCipher encryptionCipher,
   }) {
     return _lock.synchronized(() async {
-      if (_instance != null) {
-        return _instance;
-      }
-
-      final directory = storageDirectory ?? await getTemporaryDirectory();
-      if (!kIsWeb) {
-        Hive.init(directory.path);
-      }
-
+      await _init(storageDirectory);
+      const defaultToken = 'hydrated_box';
       final box = await Hive.openBox(
-        'hydrated_box',
+        defaultToken,
         encryptionCipher: encryptionCipher,
       );
-
-      await _migrate(directory, box);
-
-      return _instance = HydratedBlocStorage._(box);
+      _pool.add(defaultToken);
+      await _migrate(_directory, box);
+      return HydratedBlocStorage._(box);
     });
+  }
+
+  static Future<HydratedBlocStorage> getScoped({
+    @required TokenedConfig config,
+  }) {
+    return _lock.synchronized(() async {
+      await _init(config.storageDirectory);
+      final boxToken = 'hydrated_box_${config.token}';
+      final box = await Hive.openBox(
+        boxToken,
+        encryptionCipher: config.encryptionCipher,
+      );
+      _pool.add(boxToken);
+      return HydratedBlocStorage._(box);
+    });
+  }
+
+  static Future<void> _init(Directory directory) async {
+    if (_directory == null || _pool.isEmpty) {
+      _directory = directory ?? await getTemporaryDirectory();
+      if (!kIsWeb) {
+        Hive.init(_directory.path);
+      } // TODO move to hydrated flutter package
+    }
   }
 
   static Future _migrate(Directory directory, Box box) async {
@@ -85,8 +101,9 @@ class HydratedBlocStorage extends HydratedStorage {
     }
   }
 
+  static Directory _directory;
   static final _lock = Lock();
-  static HydratedStorage _instance;
+  static final _pool = <String>{};
 
   HydratedBlocStorage._(this._box);
   final Box _box;
@@ -121,7 +138,7 @@ class HydratedBlocStorage extends HydratedStorage {
   @override
   Future<void> clear() {
     if (_box.isOpen) {
-      _instance = null;
+      _pool.remove(_box.name);
       return _lock.synchronized(_box.deleteFromDisk);
     } else {
       return null;
